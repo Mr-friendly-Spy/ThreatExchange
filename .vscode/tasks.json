@@ -1,0 +1,159 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run API",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": {
+        "command": "${workspaceFolder}/.venv/Scripts/python.exe"
+      },
+      "args": [
+        "-m",
+        "uvicorn",
+        "app.main:create_app",
+        "--factory",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000",
+        "--reload",
+        "--no-proxy-headers"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Test API",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": {
+        "command": "${workspaceFolder}/.venv/Scripts/python.exe"
+      },
+      "args": [
+        "-m",
+        "pytest",
+        "--cov=app",
+        "--cov-report=term-missing"
+      ],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Regenerate OpenAPI models",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": {
+        "command": "${workspaceFolder}/.venv/Scripts/python.exe"
+      },
+      "args": [
+        "scripts/generate_models.py"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: HTTPS start",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "--project-name",
+        "threat-exchange",
+        "-f",
+        "compose.yaml",
+        "-f",
+        "compose.https.yaml",
+        "up",
+        "--build",
+        "-d",
+        "--wait"
+      ],
+      "windows": {
+        "command": "powershell.exe",
+        "args": [
+          "-NoProfile",
+          "-File",
+          "scripts/docker.ps1",
+          "compose",
+          "--project-name",
+          "threat-exchange",
+          "-f",
+          "compose.yaml",
+          "-f",
+          "compose.https.yaml",
+          "up",
+          "--build",
+          "-d",
+          "--wait"
+        ]
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: HTTPS status",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "--project-name",
+        "threat-exchange",
+        "-f",
+        "compose.yaml",
+        "-f",
+        "compose.https.yaml",
+        "ps"
+      ],
+      "windows": {
+        "command": "powershell.exe",
+        "args": [
+          "-NoProfile",
+          "-File",
+          "scripts/docker.ps1",
+          "compose",
+          "--project-name",
+          "threat-exchange",
+          "-f",
+          "compose.yaml",
+          "-f",
+          "compose.https.yaml",
+          "ps"
+        ]
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: HTTPS stop",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "compose",
+        "--project-name",
+        "threat-exchange",
+        "-f",
+        "compose.yaml",
+        "-f",
+        "compose.https.yaml",
+        "down"
+      ],
+      "windows": {
+        "command": "powershell.exe",
+        "args": [
+          "-NoProfile",
+          "-File",
+          "scripts/docker.ps1",
+          "compose",
+          "--project-name",
+          "threat-exchange",
+          "-f",
+          "compose.yaml",
+          "-f",
+          "compose.https.yaml",
+          "down"
+        ]
+      },
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+name: Verify service
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - run: python -m pip install -c requirements.lock -e '.[dev]'
+      - run: python scripts/generate_models.py --check
+      - run: python -m ruff check .
+      - run: python -m ruff format --check .
+      - run: python -m pytest --cov=app --cov-report=term-missing --cov-fail-under=90
+      - name: Build and smoke-test container
+        env:
+          COMPOSE_PROJECT_NAME: threat-exchange-ci
+          THREAT_API_KEY: ci-test-only-00000000000000000000000000000000
+        run: |
+          docker compose up --build --wait --wait-timeout 120
+          python scripts/check_deployment.py --record-file /tmp/threat-exchange-record
+          docker compose up --force-recreate --wait
+          python scripts/check_deployment.py --read-record /tmp/threat-exchange-record
+          docker compose -f compose.yaml -f compose.https.yaml up --wait --wait-timeout 120
+          python scripts/export_ca.py --project-name threat-exchange-ci
+          python scripts/check_deployment.py --base-url https://localhost:8443 --ca-file certs/local-ca.crt
+      - name: Container diagnostics and cleanup
+        if: always()
+        env:
+          COMPOSE_PROJECT_NAME: threat-exchange-ci
+        run: |
+          docker compose -f compose.yaml -f compose.https.yaml logs
+          docker compose -f compose.yaml -f compose.https.yaml down --volumes

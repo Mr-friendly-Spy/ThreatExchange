@@ -1,0 +1,281 @@
+openapi: 3.0.3
+info:
+  title: Information Exchange Service
+  description: |
+    API для обмена информацией об угрозах. MD5 регистронезависим; в ответе — нижний регистр.
+    PUT полностью заменяет изменяемые поля: пропущенные поля получают значения по умолчанию.
+    Даты наблюдений должны содержать часовой пояс; last_seen требует first_seen и не может
+    быть раньше него. Неизвестные поля запрещены. Пробельное имя запрещено.
+    Если THREAT_API_KEY задан, все /info операции требуют X-API-Key.
+    Без ключа в конфигурации доступ открыт для локальной разработки.
+  version: 1.0.0
+tags:
+  - name: Threats
+    description: Информация об угрозах
+  - name: Service
+    description: Проверка готовности
+security:
+  - ApiKey: []
+  - {}
+paths:
+  /info/{md5}:
+    parameters:
+      - $ref: '#/components/parameters/Md5'
+    get:
+      tags: [Threats]
+      summary: Получить информацию об угрозе по MD5
+      operationId: getInfoByMd5
+      responses:
+        '200':
+          description: Информация об угрозе
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreatResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [Threats]
+      summary: Заменить информацию о существующей угрозе
+      operationId: updateThreat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThreatUpdateRequest'
+      responses:
+        '200':
+          description: Информация успешно обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreatResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /info:
+    post:
+      tags: [Threats]
+      summary: Создать новую запись об угрозе
+      description: MD5 должен быть уникальным, включая различия только в регистре.
+      operationId: createThreat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThreatCreateRequest'
+      responses:
+        '201':
+          description: Запись создана
+          headers:
+            Location:
+              description: Относительный URL созданной записи
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreatResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /health:
+    get:
+      tags: [Service]
+      summary: Проверить готовность сервиса и базы данных
+      operationId: health
+      security: []
+      responses:
+        '200':
+          description: Сервис готов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: База данных недоступна
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  parameters:
+    Md5:
+      name: md5
+      in: path
+      required: true
+      description: MD5-хеш файла (32 шестнадцатеричных символа)
+      schema: &md5
+        type: string
+        pattern: '^[a-fA-F0-9]{32}$'
+        minLength: 32
+        maxLength: 32
+        example: d41d8cd98f00b204e9800998ecf8427e
+  schemas:
+    ThreatUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties: &threatProperties
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: '\S'
+          description: Название угрозы; внешние пробелы удаляются
+          example: Trojan.Win32.Generic
+        description:
+          type: string
+          maxLength: 4000
+          default: ''
+          description: Краткое описание поведения угрозы
+        threat_type:
+          type: string
+          enum: [unknown, trojan, ransomware, worm, spyware, adware, rootkit, other]
+          default: unknown
+          description: Класс угрозы
+        severity:
+          type: string
+          enum: [unknown, low, medium, high, critical]
+          default: unknown
+          description: Оценка опасности
+        tags:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          default: []
+          description: Уникальные метки в нижнем регистре
+          items:
+            type: string
+            minLength: 1
+            maxLength: 50
+            pattern: '^[a-z0-9][a-z0-9._-]*$'
+          example: [windows, banking]
+        first_seen:
+          type: string
+          format: date-time
+          nullable: true
+          default: null
+          description: Первое наблюдение, RFC 3339 с часовым поясом; ответ в UTC
+        last_seen:
+          type: string
+          format: date-time
+          nullable: true
+          default: null
+          description: Последнее наблюдение; требует first_seen и не раньше него
+    ThreatCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [md5, name]
+      properties:
+        <<: *threatProperties
+        md5: *md5
+    ThreatResponse:
+      type: object
+      additionalProperties: false
+      required: [md5, name, description, threat_type, severity, tags, first_seen, last_seen, created_at, updated_at]
+      properties:
+        <<: *threatProperties
+        md5: *md5
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Время создания на сервере (UTC), не меняется при PUT
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Время последнего изменения на сервере (UTC)
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [message, details]
+      properties:
+        message:
+          type: string
+          description: Человекочитаемое описание ошибки
+          example: Threat not found
+        details:
+          type: string
+          description: Подробности без внутренней информации сервера
+          example: No threat with the supplied MD5 found
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+  responses:
+    BadRequest:
+      description: Некорректный JSON, MD5 или данные запроса
+      content: &errorContent
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Угроза не найдена
+      content: *errorContent
+    Conflict:
+      description: Угроза с таким MD5 уже существует
+      content: *errorContent
+    Unauthorized:
+      description: Ключ доступа отсутствует или неверен
+      content: *errorContent
+    TooLarge:
+      description: Превышен максимальный размер тела запроса
+      content: *errorContent
+    UnsupportedMediaType:
+      description: Необходим Content-Type application/json
+      content: *errorContent
+    RateLimited:
+      description: Превышен лимит запросов с одного IP
+      headers:
+        Retry-After:
+          description: Число секунд до следующей попытки
+          schema:
+            type: integer
+            minimum: 1
+      content: *errorContent
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content: *errorContent

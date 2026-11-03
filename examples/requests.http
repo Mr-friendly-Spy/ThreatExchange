@@ -1,0 +1,45 @@
+@baseUrl = http://127.0.0.1:8000
+@md5 = d41d8cd98f00b204e9800998ecf8427e
+# If access control is enabled, put your key here (do not commit real keys).
+@apiKey =
+
+### Health check
+GET {{baseUrl}}/health
+
+### Create (201; repeat -> 409)
+POST {{baseUrl}}/info
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "md5": "{{md5}}",
+  "name": "Trojan.Win32.Generic",
+  "description": "Collects browser credentials",
+  "threat_type": "trojan",
+  "severity": "high",
+  "tags": ["windows", "banking"],
+  "first_seen": "2026-01-02T12:00:00+03:00",
+  "last_seen": "2026-01-03T09:00:00Z"
+}
+
+### Read (200)
+GET {{baseUrl}}/info/{{md5}}
+X-API-Key: {{apiKey}}
+
+### Full replacement (omitted optional fields reset to defaults)
+PUT {{baseUrl}}/info/{{md5}}
+Content-Type: application/json
+X-API-Key: {{apiKey}}
+
+{
+  "name": "Trojan.Win32.Updated",
+  "severity": "critical"
+}
+
+### Invalid MD5 (400)
+GET {{baseUrl}}/info/invalid
+X-API-Key: {{apiKey}}
+
+### Missing threat (404)
+GET {{baseUrl}}/info/00000000000000000000000000000000
+X-API-Key: {{apiKey}}

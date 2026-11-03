@@ -1,0 +1,27 @@
+services:
+  api:
+    build: .
+    ports:
+      - "${THREAT_BIND_ADDRESS:-127.0.0.1}:${THREAT_HTTP_PORT:-8000}:8000"
+    environment:
+      THREAT_DB_PATH: /data/threats.db
+      THREAT_PUBLIC_URL: http://127.0.0.1:${THREAT_HTTP_PORT:-8000}
+      THREAT_API_KEY: ${THREAT_API_KEY:-}
+      THREAT_RATE_LIMIT_REQUESTS: ${THREAT_RATE_LIMIT_REQUESTS:-60}
+      THREAT_RATE_LIMIT_WINDOW_SECONDS: ${THREAT_RATE_LIMIT_WINDOW_SECONDS:-60}
+      THREAT_RATE_LIMIT_MAX_CLIENTS: ${THREAT_RATE_LIMIT_MAX_CLIENTS:-10000}
+      THREAT_MAX_BODY_BYTES: ${THREAT_MAX_BODY_BYTES:-65536}
+    volumes:
+      - threat_data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    stop_grace_period: 15s
+
+volumes:
+  threat_data:
